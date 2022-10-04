@@ -49,7 +49,14 @@ for synset, obj_scale in zip(synset_list, scale_list):
             os.system('mv ' + os.path.join(dataset_folder, synset, file, 'models/*') + ' ' + os.path.join(dataset_folder, synset, file))
             # remove file_list+'/models' if it exists
             os.system('rm -rf ' + os.path.join(dataset_folder, synset, file, 'models'))
-
+        material_file = os.path.join(dataset_folder, synset, file, 'model_normalized.mtl')
+        # read material_file as a text file, replace any instance of '../images' with './images'
+        with open(material_file, 'r') as f:
+            material_file_text = f.read()
+        material_file_text = material_file_text.replace('../images', './images')
+        # write the modified text to material_file
+        with open(material_file, 'w') as f:
+            f.write(material_file_text)
 
 for synset, obj_scale in zip(synset_list, scale_list):
     file_list = sorted(os.listdir(os.path.join(dataset_folder, synset)))

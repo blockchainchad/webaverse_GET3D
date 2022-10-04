@@ -97,8 +97,6 @@ mesh_obj.scale[1] /= factor
 mesh_obj.scale[2] /= factor
 bpy.ops.object.transform_apply(scale=True)
 
-bpy.ops.object.light_add(type='AREA')
-
 # Place camera
 cam = scene.objects['Camera']
 cam_empty = scene.objects['Empty']
