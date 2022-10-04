@@ -1,3 +1,16 @@
+## Boostrap
+1. Move all shapenet models into the 'shapenet' folder, you might need to make it
+```sh
+# structure shouild look like this:
+./render_shapenet_data/shapenet/03790512/1a2d2208f73d0531cec33e62192b66e5/model_normalized.obj
+```
+2. Run render_all.py, no args
+```
+python render_all.py
+```
+
+Tested on blender 3.3
+
 ## Render Shapenet Dataset
 
 - Download shapenet V1 dataset following the [official link](https://shapenet.org/) and

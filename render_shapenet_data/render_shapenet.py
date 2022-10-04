@@ -27,75 +27,15 @@ parser.add_argument(
 parser.add_argument(
     '--format', type=str, default='PNG',
     help='Format of files generated. Either PNG or OPEN_EXR')
-parser.add_argument(
-    '--resolution', type=int, default=512,
-    help='Resolution of the images.')
-parser.add_argument(
-    '--engine', type=str, default='CYCLES',
-    help='Blender internal engine for rendering. E.g. CYCLES, BLENDER_EEVEE, ...')
-
 argv = sys.argv[sys.argv.index("--") + 1:]
 args = parser.parse_args(argv)
+
+bpy.ops.wm.open_mainfile(filepath=os.path.abspath("./scene.blend"))
 
 # Set up rendering
 context = bpy.context
 scene = bpy.context.scene
 render = bpy.context.scene.render
-
-render.engine = args.engine
-render.image_settings.color_mode = 'RGBA'  # ('RGB', 'RGBA', ...)
-render.image_settings.file_format = args.format  # ('PNG', 'OPEN_EXR', 'JPEG, ...)
-render.resolution_x = args.resolution
-render.resolution_y = args.resolution
-render.resolution_percentage = 100
-bpy.context.scene.cycles.filter_width = 0.01
-bpy.context.scene.render.film_transparent = True
-
-bpy.context.scene.cycles.device = 'GPU'
-bpy.context.scene.cycles.diffuse_bounces = 1
-bpy.context.scene.cycles.glossy_bounces = 1
-bpy.context.scene.cycles.transparent_max_bounces = 3
-bpy.context.scene.cycles.transmission_bounces = 3
-bpy.context.scene.cycles.samples = 32
-bpy.context.scene.cycles.use_denoising = True
-
-
-def enable_cuda_devices():
-    prefs = bpy.context.preferences
-    cprefs = prefs.addons['cycles'].preferences
-    cprefs.get_devices()
-
-    # Attempt to set GPU device types if available
-    for compute_device_type in ('CUDA', 'OPENCL', 'NONE'):
-        try:
-            cprefs.compute_device_type = compute_device_type
-            print("Compute device selected: {0}".format(compute_device_type))
-            break
-        except TypeError:
-            pass
-
-    # Any CUDA/OPENCL devices?
-    acceleratedTypes = ['CUDA', 'OPENCL']
-    accelerated = any(device.type in acceleratedTypes for device in cprefs.devices)
-    print('Accelerated render = {0}'.format(accelerated))
-
-    # If we have CUDA/OPENCL devices, enable only them, otherwise enable
-    # all devices (assumed to be CPU)
-    print(cprefs.devices)
-    for device in cprefs.devices:
-        device.use = not accelerated or device.type in acceleratedTypes
-        print('Device enabled ({type}) = {enabled}'.format(type=device.type, enabled=device.use))
-
-    return accelerated
-
-
-enable_cuda_devices()
-context.active_object.select_set(True)
-bpy.ops.object.delete()
-
-# Import textured mesh
-bpy.ops.object.select_all(action='DESELECT')
-
 
 def bounds(obj, local=False):
     local_coords = obj.bound_box[:]
@@ -158,56 +98,37 @@ mesh_obj.scale[2] /= factor
 bpy.ops.object.transform_apply(scale=True)
 
 bpy.ops.object.light_add(type='AREA')
-light2 = bpy.data.lights['Area']
-
-light2.energy = 30000
-bpy.data.objects['Area'].location[2] = 0.5
-bpy.data.objects['Area'].scale[0] = 100
-bpy.data.objects['Area'].scale[1] = 100
-bpy.data.objects['Area'].scale[2] = 100
 
 # Place camera
 cam = scene.objects['Camera']
-cam.location = (0, 1.2, 0)  # radius equals to 1
-cam.data.lens = 35
-cam.data.sensor_width = 32
-
-cam_constraint = cam.constraints.new(type='TRACK_TO')
-cam_constraint.track_axis = 'TRACK_NEGATIVE_Z'
-cam_constraint.up_axis = 'UP_Y'
-
-cam_empty = bpy.data.objects.new("Empty", None)
-cam_empty.location = (0, 0, 0)
-cam.parent = cam_empty
-
-scene.collection.objects.link(cam_empty)
-context.view_layer.objects.active = cam_empty
-cam_constraint.target = cam_empty
+cam_empty = scene.objects['Empty']
 
 stepsize = 360.0 / args.views
 rotation_mode = 'XYZ'
 
 model_identifier = os.path.split(os.path.split(args.obj)[0])[1]
+print('model identifier: ' + model_identifier)
 synset_idx = args.obj.split('/')[-3]
+print('synset idx: ' + synset_idx)
 
-img_follder = os.path.join(os.path.abspath(args.output_folder), 'img', synset_idx, model_identifier)
-camera_follder = os.path.join(os.path.abspath(args.output_folder), 'camera', synset_idx, model_identifier)
+img_folder = os.path.join(os.path.abspath(args.output_folder), 'img', synset_idx, model_identifier)
+camera_folder = os.path.join(os.path.abspath(args.output_folder), 'camera', synset_idx, model_identifier)
 
-os.makedirs(img_follder, exist_ok=True)
-os.makedirs(camera_follder, exist_ok=True)
+os.makedirs(img_folder, exist_ok=True)
+os.makedirs(camera_folder, exist_ok=True)
 
 rotation_angle_list = np.random.rand(args.views)
 elevation_angle_list = np.random.rand(args.views)
 rotation_angle_list = rotation_angle_list * 360
 elevation_angle_list = elevation_angle_list * 30
-np.save(os.path.join(camera_follder, 'rotation'), rotation_angle_list)
-np.save(os.path.join(camera_follder, 'elevation'), elevation_angle_list)
+np.save(os.path.join(camera_folder, 'rotation'), rotation_angle_list)
+np.save(os.path.join(camera_folder, 'elevation'), elevation_angle_list)
 
 for i in range(0, args.views):
     cam_empty.rotation_euler[2] = math.radians(rotation_angle_list[i])
     cam_empty.rotation_euler[0] = math.radians(elevation_angle_list[i])
 
     print("Rotation {}, {}".format((stepsize * i), math.radians(stepsize * i)))
-    render_file_path = os.path.join(img_follder, '%03d.png' % (i))
+    render_file_path = os.path.join(img_folder, '%03d.png' % (i))
     scene.render.filepath = render_file_path
     bpy.ops.render.render(write_still=True)

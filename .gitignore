@@ -1,1 +1,3 @@
 .DS_Store
+render_shapenet_data/shapenet
+render_shapenet_data/out
